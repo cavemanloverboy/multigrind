@@ -8,9 +8,9 @@ Squads v4 multisig pubkeys are based on a `create_key` pubkey that serves as a n
 Fun fact: experiments on Apple M2 Max show that griding multisig addresses by searching for an offcurve `create_key` signer (e.g. auxiliary pda) is ≈20-25% faster than generating ed25519 keypairs.
 
 ### What's in this repo?
-1. A smart contract implementation
-
+1. A smart contract implementation of a rudimentary multisig marketplace. It facilitates the listing and selling of vanity multisigs.
 2.  Off-chain address grinder.
+
 ##### Contract
 The contract is found in `auxiliary`. It contains two instructions. One initializes an auxiliary account which manages the multisig. The other allows a buyer to buy a listed multisig. **THIS CONTRACT IS CURRENTLY UNAUDITED. USE AT YOUR OWN RISK. THE AUTHOR IS NOT LIABLE FOR ANY LOSS OF FUNDS OR EXPLOITS DISCOVERED.**
 
