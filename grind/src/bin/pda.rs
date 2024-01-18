@@ -1,7 +1,7 @@
 //! This executable grinds squads v4 pubkeys. It does so by exploiting
 //! pda signers. With an auxiliary program that allows for grinding of
 //! pda pubkeys, we can create a pda that has a `creator_key` which
-//! seeds a desired squards v4 multisig pubkey. Using pdas as signers is
+//! seeds a desired Squads v4 multisig pubkey. Using pdas as signers is
 //! roughly 25% faster in regards to scanning pubkeys when compared to
 //! randomly generating keypairs, due to ed25519 keygen being expensive.
 use std::time::Instant;
