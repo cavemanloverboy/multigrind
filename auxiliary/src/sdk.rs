@@ -106,6 +106,7 @@ impl InstructionBuilder {
         auxiliary: Pubkey,
         multisig: Pubkey,
         buyer: Pubkey,
+        recipient: Pubkey,
     ) -> Instruction {
         let transaction_index = 0_u64; // This is the first transaction for this multisig
 
@@ -152,7 +153,7 @@ impl InstructionBuilder {
                 AccountMeta::new_readonly(SYSTEM_PROGRAM, false),
                 AccountMeta::new_readonly(SQUADS_V4_PROGRAM, false),
                 // TODO: USER is recipient of fees!
-                AccountMeta::new(USER, false),
+                AccountMeta::new(recipient, false),
                 AccountMeta::new(config_transaction_pda, false),
                 AccountMeta::new(proposal_pda, false),
             ],

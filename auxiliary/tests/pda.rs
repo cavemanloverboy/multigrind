@@ -104,6 +104,8 @@ async fn test_pda_init() {
         auxiliary_pda,
         multisig_pda,
         buyer.pubkey(),
+        // TODO: recipient
+        payer.pubkey(),
     );
     let transaction = Transaction::new_signed_with_payer(
         &[instruction],
