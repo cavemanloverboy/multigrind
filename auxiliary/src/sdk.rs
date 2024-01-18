@@ -7,7 +7,6 @@ use solana_program::{
 use crate::{
     instruction::{AuxiliaryInstruction, InitArgs, SellArgs},
     squads_sdk::SQUADS_V4_PROGRAM,
-    utils::USER,
 };
 
 const SEED_PREFIX: &[u8] = b"multisig";
@@ -114,36 +113,37 @@ impl InstructionBuilder {
         // 1) config_transaction to make a transaction to remove
         //    auxiliary as multisig member
         // 2) proposal to propose and approve the config_transaction to the multisig
-        let config_transaction_seeds: &[&[u8]] = &[
-            SEED_PREFIX,
-            multisig.as_ref(),
-            SEED_TRANSACTION,
-            &transaction_index
-                .checked_add(1)
-                .unwrap()
-                .to_le_bytes(),
-        ];
-        let (config_transaction_pda, _config_transaction_bump) =
+        let (config_transaction_pda, _config_transaction_bump) = {
+            let config_transaction_seeds: &[&[u8]] = &[
+                SEED_PREFIX,
+                multisig.as_ref(),
+                SEED_TRANSACTION,
+                &transaction_index
+                    .checked_add(1)
+                    .unwrap()
+                    .to_le_bytes(),
+            ];
             Pubkey::find_program_address(
                 config_transaction_seeds,
                 &SQUADS_V4_PROGRAM,
-            );
-        let proposal_seeds: &[&[u8]] = &[
-            SEED_PREFIX,
-            multisig.as_ref(),
-            SEED_TRANSACTION,
-            &transaction_index
-                .checked_add(1)
-                .unwrap()
-                .to_le_bytes(),
-            SEED_PROPOSAL,
-        ];
-        let (proposal_pda, _proposal_bump) =
+            )
+        };
+        let (proposal_pda, _proposal_bump) = {
+            let proposal_seeds: &[&[u8]] = &[
+                SEED_PREFIX,
+                multisig.as_ref(),
+                SEED_TRANSACTION,
+                &transaction_index
+                    .checked_add(1)
+                    .unwrap()
+                    .to_le_bytes(),
+                SEED_PROPOSAL,
+            ];
             Pubkey::find_program_address(
                 proposal_seeds,
                 &SQUADS_V4_PROGRAM,
-            );
-
+            )
+        };
         Instruction {
             program_id: crate::ID,
             accounts: vec![
