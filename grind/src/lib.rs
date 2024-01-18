@@ -40,7 +40,7 @@ pub const MIN_LEN: usize = {
 };
 
 // Assert min length is >=5 (prevent spam)
-const _: () = assert!(MAX_LEN >= 5);
+const _: () = assert!(MIN_LEN >= 5);
 
 // Check targets for invalid bs58
 const _: () = {
