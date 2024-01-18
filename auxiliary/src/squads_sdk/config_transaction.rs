@@ -23,7 +23,7 @@ impl ConfigTransactionCreateArgs {
         data[0..8]
             .copy_from_slice(&[155, 236, 87, 228, 137, 75, 81, 39]);
 
-        // Write one action [u32 le length, 1_u32 enum disc, pubkey]
+        // Write one action [u32 le length, 1_u8 enum disc, pubkey]
         data[8..12].copy_from_slice(&1_u32.to_le_bytes());
         data[12] = 1;
         data[13..45].copy_from_slice(&auxiliary.as_ref());
