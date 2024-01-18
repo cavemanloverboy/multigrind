@@ -18,6 +18,6 @@ This contract carries out two instructions
 
 **NOTES**
 1) THIS CONTRACT IS CURRENTLY UNAUDITED. USE AT YOUR OWN RISK. THE AUTHOR IS NOT LIABLE FOR ANY LOSS OF FUNDS OR EXPLOITS DISCOVERED.
-2) This contract is unfinished because some design choices have to be made by the deployer. The choices that need to be made are whether this will be a permissioned (one or several approved grinders/sellers), or fully permissionless. This affects a few points in the code which are all documented with `TODO`.
+2) This contract is unfinished because some design choices have to be made by the deployer. The choices that need to be made are relevant to whether this will be a permissioned (one or several approved grinders/sellers), or fully permissionless. This affects a few points in the code which are all documented with `TODO`.
 3) This contract uses the squads v4 staging contract `STAG3...` on mainnet. Once the production contract is live, all references to `STAG3...` need to be replaced with the production contract `SQDS4...`.
   
