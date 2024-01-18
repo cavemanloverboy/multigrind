@@ -1,0 +1,1 @@
+The `solana-program-test` crate looks in `tests/fixtures` for program files so we put the staging version `STAG3...` of Squads V4 program in here

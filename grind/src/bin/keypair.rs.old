@@ -1,0 +1,177 @@
+//! This executable grinds squads v4 pubkeys using temporary keypairs
+//! I stopped working on this because scanning pubkeys via pdas was 
+//! faster by ≈20% on my machine and because we kind of want the auxiliary
+//! program for trustless multisig management & atomic ownership transfer.
+use std::time::Instant;
+
+use ed25519_dalek::{PublicKey, SecretKey};
+use multigrind::{
+    fd_bs58_32, EXPECTED_TIME_BETWEEN_HITS, MAX_LEN, TARGETS,
+};
+use num_format::{Locale, ToFormattedString};
+use sha2::{Digest, Sha256};
+
+// /// Squads v4 pubkey "SQDS4ep65T869zMMBKyuUq6aD6EgTu8psMjkvj52pCf"
+// pub const SQUADS_V4_PROGRAM: [u8; 32] = [
+//     6, 129, 196, 206, 71, 226, 35, 104, 184, 177, 85, 94, 200, 135,
+//     175, 9, 46, 252, 126, 251, 182, 108, 163, 245, 47, 191, 104, 212,
+//     172, 156, 183, 168,
+// ];
+
+/// Squads v4 pubkey "STAG3xkFMyVK3sRtQhipsKuLpRGbgospDpVdNyJqDpS"
+/// (staging)
+pub const SQUADS_V4_PROGRAM: [u8; 32] = [
+    6, 133, 25, 90, 67, 62, 27, 69, 237, 51, 213, 33, 17, 206, 19, 176,
+    136, 45, 117, 199, 250, 78, 159, 114, 169, 7, 206, 227, 192, 95,
+    144, 63,
+];
+
+// seeds used by squads v4
+// seeds = [SEED_PREFIX, SEED_MULTISIG, create_key.key().as_ref()],
+pub const SEED_PREFIX: &[u8] = b"multisig";
+pub const SEED_MULTISIG: &[u8] = b"multisig";
+
+/// Solana uses this as final seed to mark pda
+/// All in all, we have sha256 of
+/// [SEED_PREFIX, SEED_MULTISIG, create_key.key().as_ref(), &[bump], PROGRAM_ID, &PDA_MARKER]
+///
+/// We can cache the digest of the first two and then proceed to digest the final four elements.
+/// This cache costs a 112 byte memcpy instead of digesting the first two seeds again.
+pub const PDA_MARKER: &[u8; 21] = b"ProgramDerivedAddress";
+
+fn main() {
+    println!(
+        "expected time between hits = {} nanos",
+        EXPECTED_TIME_BETWEEN_HITS.to_formatted_string(&Locale::en)
+    );
+
+    // We can cache the digest of the first two seeds and then proceed to digest the final four elements.
+    // This cache costs a 112 byte memcpy instead of digesting the first two seeds again.
+    let pre_seed = get_preseed();
+
+    // Contiguous bytes for the next four seeds
+    const PUBKEY_LEN: usize = 32;
+    const BUMP_LEN: usize = 1;
+    let mut four_seeds = [0; PUBKEY_LEN
+        + BUMP_LEN
+        + SQUADS_V4_PROGRAM.len()
+        + PDA_MARKER.len()];
+
+    // The program id bytes and PDA marker are fixed.
+    // We will only need to modify the first 33 bytes.
+    // First write program id
+    four_seeds
+        [PUBKEY_LEN + BUMP_LEN..PUBKEY_LEN + BUMP_LEN + PUBKEY_LEN]
+        .copy_from_slice(&SQUADS_V4_PROGRAM);
+    // Then write pda marker
+    four_seeds[PUBKEY_LEN + BUMP_LEN + PUBKEY_LEN..]
+        .copy_from_slice(PDA_MARKER);
+
+    let mut rng = fastrand::Rng::new();
+
+    let string: &'static mut str = "x".repeat(50).leak();
+
+    loop {
+        let timer = Instant::now();
+        const ITERS: u128 = 100_000;
+
+        // Tight loop
+        // 1) Generate keypair and write pubkey to seeds
+        // 2) Calculate squads v4 pda
+        // 3) Check if pda is a target pda
+        let mut secret_bytes = [0; 32];
+        for _ in 0..ITERS {
+            // 1) Generate keypair and write pubkey to seeds
+            rng.fill(&mut secret_bytes);
+            let secret_key =
+                SecretKey::from_bytes(&secret_bytes).unwrap();
+            let public_key: PublicKey = (&secret_key).into();
+            four_seeds[..PUBKEY_LEN]
+                .copy_from_slice(public_key.as_bytes());
+
+            // 2) Calculate squads v4 pda
+            // Need to find bump that results in pda
+            'bump_loop: for bump in (0..=u8::MAX).rev() {
+                // Update bump
+                four_seeds[PUBKEY_LEN] = bump;
+
+                // Get pda candidate bytes
+                // (write directly into squads v4 pda seeds)
+                pre_seed
+                    .clone()
+                    .chain_update(four_seeds)
+                    .finalize_into(
+                        (&mut four_seeds[..PUBKEY_LEN]).into(),
+                    );
+
+                // Check if bytes are pda
+                if offcurve(&four_seeds[..PUBKEY_LEN]) {
+                    break 'bump_loop;
+                }
+            }
+
+            // 3) Check if pda is a target pda
+            //
+            // Extract and check squads v4 pda byte subset and bs58 encode
+            let squads_v4_pda_subset = &four_seeds[..32];
+            fd_bs58_32::encode_32(squads_v4_pda_subset)
+                .onto(&mut *string)
+                .unwrap();
+
+            // This branch is easy to predict (skip almost always)
+            if let Some(target) = TARGETS
+                .iter()
+                .find(|t| ***t == string[..t.len()])
+            {
+                // Extract payload
+                let seed_we_care_about = &secret_bytes;
+                println!(
+                    "done {} vs {}: {seed_we_care_about:?}",
+                    &target[..target.len()],
+                    &string[..MAX_LEN + 2],
+                );
+            }
+        }
+        println!(
+            "avg iter {} nanos",
+            timer.elapsed().as_nanos() / ITERS
+        );
+    }
+}
+
+#[inline(always)]
+fn get_preseed() -> Sha256 {
+    const PERF_ITERS: u128 = 1_000_000;
+    let pre_seed_timer = Instant::now();
+    let pre_seed: Sha256 = (0..core::hint::black_box(PERF_ITERS))
+        .map(|_| {
+            core::hint::black_box(
+                Sha256::new()
+                    .chain_update(SEED_PREFIX)
+                    .chain_update(SEED_MULTISIG),
+            )
+        })
+        .last()
+        .unwrap();
+    println!(
+        "preseed takes {} nanos",
+        pre_seed_timer.elapsed().as_nanos() / PERF_ITERS
+    );
+    let clone_timer = Instant::now();
+    (0..core::hint::black_box(PERF_ITERS)).for_each(|_| {
+        core::hint::black_box(pre_seed.clone());
+    });
+    println!(
+        "clone takes {} nanos",
+        clone_timer.elapsed().as_nanos() / PERF_ITERS
+    );
+
+    pre_seed
+}
+
+#[inline(always)]
+pub fn offcurve(bytes: &[u8]) -> bool {
+    curve25519_dalek::edwards::CompressedEdwardsY::from_slice(bytes)
+        .decompress()
+        .is_none()
+}

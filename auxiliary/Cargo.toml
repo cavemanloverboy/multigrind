@@ -1,0 +1,22 @@
+[package]
+name = "auxiliary"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib", "lib"]
+
+[features]
+default = []
+no-entrypoint = []
+
+[dependencies]
+bs58 = { version = "0.5.0", default-features = false }
+bytemuck = { version = "1.14.0", features = ["derive"] }
+rkyv = { version = "0.7.43", features = ["validation", "strict"] }
+solana-program = "1.17"
+
+[dev-dependencies]
+solana-program-test = "1.17.15"
+solana-sdk = "1.17.15"
+tokio = { version = "1.35", features = ["full"] }
