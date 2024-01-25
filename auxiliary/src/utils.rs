@@ -149,11 +149,3 @@ pub fn create_pda_funded_by_payer<'a, 'info>(
 
     Ok(())
 }
-
-// pub fn delete_pda() -> ProgramResult {
-//     // solana_program::system_instruction::
-//     // let instruction = StableInstruction {
-
-//     };
-//     Ok(())
-// }
